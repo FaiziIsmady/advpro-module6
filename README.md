@@ -10,6 +10,7 @@
 - [Commit 3 Reflection](##-Commit-3-Reflection)
 - [Commit 4 Reflection](##-Commit-4-Reflection)
 - [Commit 5 Reflection](##-Commit-5-Reflection)
+- [Commit Bonus Reflection](##-Commit-Bonus-Reflection)
 
 ## Commit 1 Reflection
 ### Milestone 1: Single threaded web server
@@ -145,3 +146,140 @@ This simulates a major problem in a real-world server (ex: slow API calls, compl
 This milestone enhances my web server by implementing multithreading using a `ThreadPool`. Previously, the server handled requests sequentially, meaning a slow request (e.g., `/sleep`) could block all other requests. Now, my server can handle multiple client requests concurrently, improving performance and responsiveness.
 
 To achieve multithreading in my web server, I implemented a `ThreadPool` that manages multiple worker threads to handle incoming client requests concurrently. This was done by creating a `ThreadPool` struct in `lib.rs`, which maintains a fixed number of worker threads. Each worker listens for incoming jobs via a message passing channel (mpsc), ensuring that tasks are efficiently distributed among available threads. In `main.rs`, instead of handling each connection sequentially, I used `pool.execute()` to assign incoming requests to the thread pool, allowing multiple requests to be processed simultaneously. Additionally, Arc (Atomic Reference Counting) and Mutex (Mutual Exclusion) were used to safely share the job queue across multiple threads, preventing race conditions. This implementation prevents the server from becoming unresponsive when handling slow requests, as other worker threads continue processing new connections while a slow request is still being executed. By limiting the number of worker threads, the server efficiently manages system resources, preventing excessive thread creation. As a result, my web server can now handle multiple client requests at once, significantly improving performance and responsiveness.
+
+## Commit Bonus Reflection
+### Bonus Reflection
+### Message: “(Bonus) Function improvement"
+
+This bonus task enhances the `ThreadPool` implementation by introducing a `build` function as an alternative to the `new` constructor. The idea is to explore different naming conventions in Rust and understand their implications. In Rust, the `new` function is a widely used convention for creating instances of structs. However, the `build` function is sometimes preferred when constructing objects that require additional setup or configuration. By using `build`, we emphasize that this function constructs and initializes a `ThreadPool`, making it more explicit that the function does more than just allocate memory.
+
+To Implement this
+
+I update `lib.rs` `ThreadPool` function and I update `main.rs` from using `new` to using `build`
+
+`lib.rs`
+Before:
+```rust
+// Code snippet
+
+impl ThreadPool {
+    pub fn new(size: usize) -> ThreadPool {
+        assert!(size > 0);
+
+        let (sender, receiver) = mpsc::channel();
+
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let mut workers = Vec::with_capacity(size);
+
+        for id in 0..size {
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
+        }
+
+        ThreadPool { workers, sender }
+    }
+    pub fn execute<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let job = Box::new(f);
+
+        self.sender.send(job).unwrap();
+    }
+}
+
+struct Worker {
+    id: usize,
+    thread: thread::JoinHandle<()>,
+}
+
+impl Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+        let thread = thread::spawn(move || loop {
+            let job = receiver.lock().unwrap().recv().unwrap();
+
+            println!("Worker {id} got a job; executing.");
+
+            job();
+        });
+
+        Worker { id, thread }
+    }
+}
+
+// Code snippet
+```
+
+After:
+```rust
+// Code snippet
+
+impl ThreadPool {
+    /// Create a new ThreadPool.
+    ///
+    /// The size is the number of threads in the pool.
+    ///
+    /// # Panics
+    ///
+    /// The `build` function will panic if the size is zero.
+    pub fn build(size: usize) -> ThreadPool {
+        assert!(size > 0);
+
+        let (sender, receiver) = mpsc::channel();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let mut workers = Vec::with_capacity(size);
+
+        for id in 0..size {
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
+        }
+
+        ThreadPool { workers, sender }
+    }
+
+    pub fn execute<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let job = Box::new(f);
+        self.sender.send(job).unwrap();
+    }
+}
+
+struct Worker {
+    id: usize,
+    thread: thread::JoinHandle<()>,
+}
+
+impl Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+        let thread = thread::spawn(move || loop {
+            let job = receiver.lock().unwrap().recv().unwrap();
+            println!("Worker {id} got a job; executing.");
+            job();
+        });
+
+        Worker { id, thread }
+    }
+}
+// Code snippet
+```
+
+`main.rs`
+Before:
+```rust
+// Code snippet
+
+let pool = ThreadPool::new(4);
+
+// Code snippet
+```
+
+After:
+```rust
+// Code snippet
+
+let pool = ThreadPool::build(4); // Using build instead of new
+
+// Code snippet
+```
