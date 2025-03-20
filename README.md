@@ -7,6 +7,8 @@
 # Links
 - [Commit 1 Reflection](##-Commit-1-Reflection)
 - [Commit 2 Reflection](##-Commit-2-Reflection)
+- [Commit 3 Reflection](##-Commit-3-Reflection)
+- [Commit 4 Reflection](##-Commit-4-Reflection)
 
 ## Commit 1 Reflection
 ### Milestone 1: Single threaded web server
@@ -102,3 +104,39 @@ fn handle_connection(mut stream: TcpStream) {
 **Here is the image:**
 
 ![Commit 3 screen capture](/assets/images/commit3.png)
+
+## Commit 4 Reflection
+### Milestone 4: Simulation slow response
+### Message: “(4) Simulation of slow request"
+
+My web server currently runs on a single thread, meaning it can handle only one request at a time. If a request takes a long time to process, all other requests are blocked until it is completed. To demonstrate this issue, I simulated a slow response.
+
+To implement this, I modified the `handle_connection` function to introduce a delay when handling requests to `/sleep`.
+
+```rust
+fn handle_connection(mut stream: TcpStream) {
+    let buf_reader = BufReader::new(&mut stream);
+    let request_line = buf_reader.lines().next().unwrap().unwrap();
+
+    let (status_line, filename) = match request_line.as_str() {
+        "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "hello.html"),
+        "GET /sleep HTTP/1.1" => {
+            thread::sleep(Duration::from_secs(10)); // Simulating slow response
+            ("HTTP/1.1 200 OK", "hello.html")
+        }
+        _ => ("HTTP/1.1 404 NOT FOUND", "404.html"),
+    };
+
+    let contents = fs::read_to_string(filename).unwrap();
+    let response = format!("{status_line}\r\n\r\n{contents}");
+
+    stream.write_all(response.as_bytes()).unwrap();
+}
+```
+
+My server processes requests sequentially. When the `/sleep` request is received, all other requests must wait for 10 seconds before being processed.
+This simulates a major problem in a real-world server (ex: slow API calls, complex query, inneficient code, etc) since it would cause delays for every user.
+
+
+
+
