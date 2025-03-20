@@ -10,7 +10,7 @@
 
 ## Commit 1 Reflection
 ### Milestone 1: Single threaded web server
-### message “(1) Handle-connection, check response"
+### Message “(1) Handle-connection, check response"
 
 For the first milestone of this project, I implemented a simple single-threaded web server in Rust. The server listens on port 7878 and handles incoming HTTP requests. To run the project, I first start the server using `cargo run`, and then I can access it through a web browser at `http://127.0.0.1:7878`. Since the server does not yet send any response, the browser will not display anything, but in the console, we can see that a connection has been established. Additionally, the request details, including headers like `User-Agent`, `Host`, and `Accept`, are printed to the console.
 
@@ -20,11 +20,11 @@ One key learning point from this implementation is that HTTP requests are made u
 
 ## Commit 2 Reflection
 ### Milestone 2: Returning HTML
-### message: “(2) Returning HTML"
+### Message: “(2) Returning HTML"
 
 In this milestone, I modified the `handle_connection` function to return an actual HTML response, allowing the browser to render a simple webpage. Instead of just printing the HTTP request to the console, our server now serves an HTML file named `hello.html`.  
 
-### Key Changes and Learnings:  
+**Key Changes and Learnings:**
 
 2.1. **Reading HTTP Requests**  
    - I use `BufReader` to read the HTTP request and stop at the empty line that marks the end of the request headers.  
@@ -42,3 +42,63 @@ In this milestone, I modified the `handle_connection` function to return an actu
 After running the server and navigating to `http://127.0.0.1:7878`, I can see the HTML content displayed in the browser. Below is a screenshot of the output: 
 
 ![Commit 2 screen capture](/assets/images/commit2.png)
+
+## Commit 3 Reflection
+### Milestone 3: Validating Request and Selectively Responding
+### Message: “(3) Validating request and selectively responding"
+
+Initially, my server served the same HTML file (`hello.html`) for any request. In this milestone, I modified it to handle different responses based on the requested path. If the request is for `/`, it returns `hello.html`. Otherwise, it serves a **404 Not Found** page (`404.html`).
+
+**Implementation Updates**
+- The server reads the request line from the client.
+- It checks if the request is for `"GET / HTTP/1.1"`.  
+  - If true, it responds with `hello.html` (status `200 OK`).
+  - If false, it responds with `404.html` (status `404 Not Found`).
+
+**Why Refactoring Was Needed?**
+- Better Code Readability: The request validation logic is separate from response handling.
+- Scalability:** It allows adding more pages easily.
+- More Realistic Behavior: Servers should differentiate between valid and invalid requests.
+
+**Updated `handle_connection` Function**
+```rust
+fn handle_connection(mut stream: TcpStream) {
+    let buf_reader = BufReader::new(&mut stream);
+    let request_line = buf_reader.lines().next().unwrap().unwrap();
+
+    let (status_line, filename) = if request_line == "GET / HTTP/1.1" {
+        ("HTTP/1.1 200 OK", "hello.html")
+    } else {
+        ("HTTP/1.1 404 NOT FOUND", "404.html")
+    };
+
+    let contents = fs::read_to_string(filename).unwrap();
+    let response = format!(
+        "{status_line}\r\nContent-Length: {}\r\n\r\n{}",
+        contents.len(),
+        contents
+    );
+
+    stream.write_all(response.as_bytes()).unwrap();
+}
+```
+
+**The "not found" page** `404.html`
+```
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Oops!</title>
+</head>
+<body>
+    <h1>Oops!</h1>
+    <p>Sorry, I don't know what you're asking for.</p>
+    <p>Rust is running from Faizi’s machine.</p>
+</body>
+</html>
+```
+
+**Here is the image:**
+
+![Commit 3 screen capture](/assets/images/commit3.png)
