@@ -9,6 +9,7 @@
 - [Commit 2 Reflection](##-Commit-2-Reflection)
 - [Commit 3 Reflection](##-Commit-3-Reflection)
 - [Commit 4 Reflection](##-Commit-4-Reflection)
+- [Commit 5 Reflection](##-Commit-5-Reflection)
 
 ## Commit 1 Reflection
 ### Milestone 1: Single threaded web server
@@ -137,6 +138,10 @@ fn handle_connection(mut stream: TcpStream) {
 My server processes requests sequentially. When the `/sleep` request is received, all other requests must wait for 10 seconds before being processed.
 This simulates a major problem in a real-world server (ex: slow API calls, complex query, inneficient code, etc) since it would cause delays for every user.
 
+## Commit 5 Reflection
+### Milestone 5: Multithreaded Server
+### Message: “(5) Multithreaded server using Threadpool"
 
+This milestone enhances my web server by implementing multithreading using a `ThreadPool`. Previously, the server handled requests sequentially, meaning a slow request (e.g., `/sleep`) could block all other requests. Now, my server can handle multiple client requests concurrently, improving performance and responsiveness.
 
-
+To achieve multithreading in my web server, I implemented a `ThreadPool` that manages multiple worker threads to handle incoming client requests concurrently. This was done by creating a `ThreadPool` struct in `lib.rs`, which maintains a fixed number of worker threads. Each worker listens for incoming jobs via a message passing channel (mpsc), ensuring that tasks are efficiently distributed among available threads. In `main.rs`, instead of handling each connection sequentially, I used `pool.execute()` to assign incoming requests to the thread pool, allowing multiple requests to be processed simultaneously. Additionally, Arc (Atomic Reference Counting) and Mutex (Mutual Exclusion) were used to safely share the job queue across multiple threads, preventing race conditions. This implementation prevents the server from becoming unresponsive when handling slow requests, as other worker threads continue processing new connections while a slow request is still being executed. By limiting the number of worker threads, the server efficiently manages system resources, preventing excessive thread creation. As a result, my web server can now handle multiple client requests at once, significantly improving performance and responsiveness.
